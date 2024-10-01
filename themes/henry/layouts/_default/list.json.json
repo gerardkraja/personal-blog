@@ -1,0 +1,58 @@
+{{- $pages := slice -}}
+{{- $pages := cond .IsHome .Site.RegularPages .Pages -}}
+{{- $pages := where $pages "Section" "not in" site.Params.invisibleSections -}}
+{{- $pages := where $pages "Params.noindex" "!=" true -}}
+
+{{- $limit := .Site.Config.Services.RSS.Limit -}}
+{{- if ge $limit 1 -}}
+    {{- $pages = $pages | first $limit -}}
+{{- end -}}
+
+{{ $length := (len $pages) -}}
+{
+    "version" : "https://jsonfeed.org/version/1",
+    "title" : "{{ if eq  .Title  .Site.Title }}{{ .Site.Title }}{{ else }}{{ with .Title }}{{.}} on {{ end }}{{ .Site.Title }}{{ end }}",
+    "description": "Recent content {{ if ne  .Title  .Site.Title }}{{ with .Title }}in {{.}} {{ end }}{{ end }}on {{ .Site.Title }}",
+    "home_page_url" : "{{ .Site.BaseURL }}",
+    "page_count": {{ $length }},
+    {{ with .OutputFormats.Get "JSON" -}}
+    "feed_url" : "{{ .Permalink }}",
+    {{ end -}}
+    {{ with $.Param "icon" -}}
+    "icon" : "{{ . | absURL }}",
+    {{ end -}}
+    {{ with $.Param "favicon" -}}
+    "favicon" : "{{ . | absURL }}",
+    {{ end -}}
+
+    {{ with .Site.Params.author.name -}}
+    "author" : {
+        "name" : "{{ . }}"{{ with $.Site.Params.author.url }},
+        "url": "{{ . }}"{{ end }}{{ with $.Site.Params.author.avatar }},
+        "avatar": "{{ . | absURL }}"{{ end }}
+    },
+    {{ end -}}
+
+    "items" : [
+
+    {{ range $index, $element := $pages -}}
+    {
+        "title" : {{ .Title | jsonify }},
+        "date_published" : "{{ .Date.Format "2006-01-02T15:04:05Z07:00" }}",
+        "id" : "{{ .File.Path }}",
+        "url" : "{{ .Permalink }}",
+        {{ with .Params.author -}}
+        "author" : {
+          "name" : "{{ . }}"
+        },
+        {{ end -}}
+        {{ with .Params.Summary -}}
+          "summary" : {{ . | jsonify }},
+        {{ end -}}
+        "content_html" : {{ .Content | jsonify }}
+    }{{ if ne (add $index 1) $length }},{{ end }}
+    {{ end -}}
+
+    ]
+}
+
